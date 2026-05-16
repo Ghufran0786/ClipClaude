@@ -8,9 +8,11 @@ import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Toolbar } from "./toolbar";
+import { Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface ClipEditorProps {
@@ -22,6 +24,7 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const isRemoteUpdate = useRef(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [contentCopied, setContentCopied] = useState(false);
   const sessionId = useRef(
     typeof crypto !== "undefined" ? crypto.randomUUID() : Math.random().toString(36).slice(2)
   );
@@ -128,6 +131,25 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
     []
   );
 
+  const handleCopyContent = useCallback(async () => {
+    if (!editor) return;
+
+    const text = editor.getText();
+    if (!text.trim()) {
+      toast.error("Nothing to copy");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setContentCopied(true);
+      toast.success("Content copied to clipboard");
+      setTimeout(() => setContentCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy content");
+    }
+  }, [editor]);
+
   const handleFileInput = useCallback(() => {
     const input = document.createElement("input");
     input.type = "file";
@@ -185,7 +207,28 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-colors dark:border-zinc-700 dark:bg-zinc-900">
-      <Toolbar editor={editor} onImageUpload={handleFileInput} />
+      <div className="flex items-center justify-between">
+        <div className="flex-1 overflow-x-auto">
+          <Toolbar editor={editor} onImageUpload={handleFileInput} />
+        </div>
+        <button
+          onClick={handleCopyContent}
+          className="mr-2 flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+          title="Copy all content"
+        >
+          {contentCopied ? (
+            <>
+              <Check size={13} />
+              Copied!
+            </>
+          ) : (
+            <>
+              <Copy size={13} />
+              Copy
+            </>
+          )}
+        </button>
+      </div>
       <EditorContent editor={editor} />
     </div>
   );

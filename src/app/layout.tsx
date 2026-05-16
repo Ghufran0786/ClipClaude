@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ClipSync — Real-time Clipboard Sharing",
+  title: "CrossClaude — Real-time Clipboard Sharing",
   description:
     "Share your clipboard between devices instantly. Paste on one laptop, copy from the other.",
 };
