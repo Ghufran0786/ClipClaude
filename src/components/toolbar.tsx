@@ -7,6 +7,7 @@ import {
   Underline,
   Strikethrough,
   Code,
+  FileCode,
   Heading1,
   Heading2,
   Heading3,
@@ -151,6 +152,13 @@ export function Toolbar({ editor, onImageUpload }: ToolbarProps) {
         title="Highlight"
       >
         <Highlighter size={s} />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        isActive={editor.isActive("codeBlock")}
+        title="Code Block"
+      >
+        <FileCode size={s} />
       </ToolbarButton>
 
       <ToolbarDivider />

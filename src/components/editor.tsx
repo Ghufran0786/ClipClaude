@@ -2,12 +2,14 @@
 
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
+import { common, createLowlight } from "lowlight";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Toolbar } from "./toolbar";
@@ -29,11 +31,15 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
     typeof crypto !== "undefined" ? crypto.randomUUID() : Math.random().toString(36).slice(2)
   );
 
+  const lowlight = createLowlight(common);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
+        codeBlock: false,
       }),
+      CodeBlockLowlight.configure({ lowlight }),
       Image.configure({ inline: true, allowBase64: true }),
       Placeholder.configure({
         placeholder: "Paste or type anything here — it syncs instantly to your other device...",
@@ -141,12 +147,24 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
     }
 
     try {
-      await navigator.clipboard.writeText(text);
+      const html = editor.getHTML();
+      const clipboardItem = new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" }),
+      });
+      await navigator.clipboard.write([clipboardItem]);
       setContentCopied(true);
-      toast.success("Content copied to clipboard");
+      toast.success("Content copied with formatting");
       setTimeout(() => setContentCopied(false), 2000);
     } catch {
-      toast.error("Failed to copy content");
+      try {
+        await navigator.clipboard.writeText(text);
+        setContentCopied(true);
+        toast.success("Content copied as plain text");
+        setTimeout(() => setContentCopied(false), 2000);
+      } catch {
+        toast.error("Failed to copy content");
+      }
     }
   }, [editor]);
 
