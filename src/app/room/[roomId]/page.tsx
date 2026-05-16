@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 import { ClipEditor } from "@/components/editor";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { toast } from "sonner";
+import { UserMenu } from "@/components/user-menu";
 import {
   Clipboard,
   ArrowLeft,
@@ -123,6 +124,7 @@ export default function RoomPage() {
               </span>
             </button>
 
+            <UserMenu />
             <ThemeToggle />
           </div>
         </div>

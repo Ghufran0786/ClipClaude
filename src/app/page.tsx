@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { generateRoomId } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
 import { ArrowRight, Clipboard, Zap, Monitor } from "lucide-react";
 
 export default function Home() {
@@ -35,7 +36,10 @@ export default function Home() {
             ClipClaude
           </span>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <UserMenu />
+          <ThemeToggle />
+        </div>
       </header>
 
       {/* Hero */}
