@@ -87,7 +87,7 @@ export default function RoomPage() {
                 className="text-zinc-900 dark:text-zinc-100"
               />
               <span className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                CrossClaude
+                ClipClaude
               </span>
             </div>
           </div>

@@ -32,7 +32,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <Clipboard size={20} className="text-zinc-900 dark:text-zinc-100" />
           <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            CrossClaude
+            ClipClaude
           </span>
         </div>
         <ThemeToggle />
