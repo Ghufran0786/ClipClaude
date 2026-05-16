@@ -11,7 +11,7 @@ import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import { common, createLowlight } from "lowlight";
 import { useEffect, useRef, useCallback, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { Toolbar } from "./toolbar";
 import { Copy, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -100,6 +100,7 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
       if (!editor) return;
 
       const fileName = `${roomId}/${Date.now()}-${file.name || "pasted-image"}`;
+      const supabase = getSupabase();
       const { data, error } = await supabase.storage
         .from("clipboard-images")
         .upload(fileName, file, {
@@ -184,6 +185,7 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
 
     onStatusChange?.("connecting");
 
+    const supabase = getSupabase();
     const channel = supabase.channel(`room:${roomId}`, {
       config: { broadcast: { self: false } },
     });
