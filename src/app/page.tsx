@@ -20,9 +20,9 @@ export default function Home() {
 
   const handleJoinRoom = (e: React.FormEvent) => {
     e.preventDefault();
-    const code = roomCode.trim();
+    const code = roomCode.trim().replace(/[^a-zA-Z0-9_-]/g, "");
     if (code) {
-      router.push(`/room/${code}`);
+      router.push(`/room/${encodeURIComponent(code)}`);
     }
   };
 

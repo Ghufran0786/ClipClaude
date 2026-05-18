@@ -7,6 +7,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Clipboard, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PASSWORD_LENGTH = 128;
+const SUBMIT_COOLDOWN_MS = 2000;
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,6 +22,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
   const supabaseRef = useRef<SupabaseClient | null>(null);
+  const lastSubmitRef = useRef<number>(0);
 
   function getSupabase() {
     if (!supabaseRef.current) {
@@ -24,18 +31,49 @@ export default function LoginPage() {
     return supabaseRef.current;
   }
 
+  function validateInputs(): string | null {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !EMAIL_REGEX.test(trimmedEmail)) {
+      return "Please enter a valid email address.";
+    }
+    if (trimmedEmail.length > MAX_EMAIL_LENGTH) {
+      return "Email address is too long.";
+    }
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+    }
+    if (password.length > MAX_PASSWORD_LENGTH) {
+      return "Password is too long.";
+    }
+    return null;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setMessage(null);
-    setIsLoading(true);
 
+    const now = Date.now();
+    if (now - lastSubmitRef.current < SUBMIT_COOLDOWN_MS) {
+      setError("Please wait before trying again.");
+      return;
+    }
+    lastSubmitRef.current = now;
+
+    const validationError = validateInputs();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setIsLoading(true);
     const supabase = getSupabase();
+    const trimmedEmail = email.trim().toLowerCase();
 
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
-          email,
+          email: trimmedEmail,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -49,7 +87,7 @@ export default function LoginPage() {
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: trimmedEmail,
           password,
         });
 
@@ -105,6 +143,8 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email address"
                   required
+                  maxLength={254}
+                  autoComplete="email"
                   className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-500"
                 />
               </div>
@@ -118,9 +158,11 @@ export default function LoginPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
+                  placeholder="Password (min 8 characters)"
                   required
-                  minLength={6}
+                  minLength={8}
+                  maxLength={128}
+                  autoComplete={isSignUp ? "new-password" : "current-password"}
                   className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-500"
                 />
               </div>
