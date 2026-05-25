@@ -3,7 +3,6 @@
 Real-time clipboard sharing across devices. Paste on one device, copy from the other — instantly. Supports rich text formatting, code blocks with syntax highlighting, and images.
 
 ## Features
-
 - **Real-time sync** — Changes appear on all connected devices instantly via Supabase Realtime
 - **Rich text editor** — Bold, italic, headings, lists, links, highlights, and more (powered by TipTap)
 - **Code blocks** — Syntax-highlighted code blocks with language detection
