@@ -12,7 +12,12 @@ import TextAlign from "@tiptap/extension-text-align";
 import { common, createLowlight } from "lowlight";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
-import { fetchRoomContent, persistRoomContent } from "@/lib/room-content";
+import {
+  fetchRoomContent,
+  persistRoomContent,
+  ROOM_CLIPBOARD_MIGRATION_MESSAGE,
+} from "@/lib/room-content";
+import { isContentWithinLimit } from "@/lib/content-limits";
 import { copyEditorContent } from "@/lib/copy-content";
 import { Toolbar } from "./toolbar";
 import { Copy, Check } from "lucide-react";
@@ -83,11 +88,16 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
   /** Optimistic version counter for fast live broadcasts before persist completes. */
   const localOptimisticVersionRef = useRef(0);
   const fetchGenerationRef = useRef(0);
+  const migrationWarningShownRef = useRef(false);
   const editorRef = useRef<Editor | null>(null);
+
+  const showMigrationMissingToast = useCallback(() => {
+    if (migrationWarningShownRef.current) return;
+    migrationWarningShownRef.current = true;
+    toast.error(ROOM_CLIPBOARD_MIGRATION_MESSAGE, { duration: 8000 });
+  }, []);
   const [contentCopied, setContentCopied] = useState(false);
-  const sessionId = useRef(
-    typeof crypto !== "undefined" ? crypto.randomUUID() : Math.random().toString(36).slice(2)
-  );
+  const [sessionId] = useState(() => crypto.randomUUID());
 
   const lowlight = createLowlight(common);
 
@@ -154,20 +164,27 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
         payload: {
           content,
           version,
-          sender: sessionId.current,
+          sender: sessionId,
         },
       });
     },
-    []
+    [sessionId]
   );
 
   const persistContent = useCallback(
     async (content: Record<string, unknown>) => {
-      const { version, error } = await persistRoomContent(roomId, content);
+      const { version, error, migrationMissing, contentTooLarge } =
+        await persistRoomContent(roomId, content);
 
       if (error) {
         console.error("Failed to persist content:", error.message);
-        toast.error("Failed to save content");
+        if (migrationMissing) {
+          showMigrationMissingToast();
+        } else if (contentTooLarge) {
+          toast.error("Content is too large to save (max 512 KB)");
+        } else {
+          toast.error("Failed to save content");
+        }
         return;
       }
 
@@ -185,12 +202,17 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
       // Authoritative broadcast with server-assigned version after persist.
       broadcastContent(content, version);
     },
-    [roomId, broadcastContent]
+    [roomId, broadcastContent, showMigrationMissingToast]
   );
 
   const queueLocalSync = useCallback(
     (rawContent: JSONContent) => {
       const content = sanitizeContentForSync(rawContent);
+
+      if (!isContentWithinLimit(content)) {
+        toast.error("Content is too large to sync (max 512 KB)");
+        return;
+      }
 
       if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current);
       broadcastTimerRef.current = setTimeout(() => {
@@ -207,9 +229,15 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
 
   const hydrateFromDb = useCallback(async () => {
     const generation = ++fetchGenerationRef.current;
-    const row = await fetchRoomContent(roomId);
+    const { row, migrationMissing } = await fetchRoomContent(roomId);
 
     if (generation !== fetchGenerationRef.current) return;
+
+    if (migrationMissing) {
+      showMigrationMissingToast();
+      return;
+    }
+
     if (!row?.content) return;
 
     lastKnownServerVersionRef.current = Math.max(
@@ -218,7 +246,7 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
     );
 
     applyRemoteContent(row.content as Record<string, unknown>, row.version);
-  }, [roomId, applyRemoteContent]);
+  }, [roomId, applyRemoteContent, showMigrationMissingToast]);
 
   const handleImageUpload = useCallback(
     async (file: File) => {
@@ -271,6 +299,8 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         codeBlock: false,
+        link: false,
+        underline: false,
       }),
       CodeBlockLowlight.configure({ lowlight }),
       Image.configure({ inline: true, allowBase64: false }),
@@ -324,7 +354,9 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
     },
   });
 
-  editorRef.current = editor;
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
 
   const handleCopyContent = useCallback(async () => {
     if (!editor) return;
@@ -413,7 +445,7 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
 
       channel
         .on("broadcast", { event: "content-sync" }, ({ payload }) => {
-          if (payload.sender === sessionId.current) return;
+          if (payload.sender === sessionId) return;
           if (typeof payload.version !== "number") return;
           applyRemoteContent(payload.content, payload.version);
         })
@@ -527,7 +559,7 @@ export function ClipEditor({ roomId, onStatusChange }: ClipEditorProps) {
       supabase.realtime.onHeartbeat(() => {});
       void teardownChannel();
     };
-  }, [editor, roomId, onStatusChange, applyRemoteContent, hydrateFromDb]);
+  }, [editor, roomId, onStatusChange, applyRemoteContent, hydrateFromDb, sessionId]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-colors dark:border-zinc-700 dark:bg-zinc-900">

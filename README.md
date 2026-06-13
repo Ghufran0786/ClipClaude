@@ -55,14 +55,11 @@ cp .env.example .env.local
 
 1. **Email auth** — Authentication → Providers → enable Email.
 2. **Realtime** — Database → Replication (or Project Settings → Realtime) → confirm Realtime is enabled for the project. Broadcast channels do not require a table, but Realtime must be on.
-3. **SQL migrations** — Open the SQL Editor and run these files **in order** (both are idempotent and safe to re-run):
+3. **SQL migrations** — Open the SQL Editor and run **`supabase/init.sql`** (single combined, idempotent script). Alternatively run `001` then `002` from `supabase/migrations/` in order.
 
-   ```
-   supabase/migrations/001_room_clipboard_and_storage.sql
-   supabase/migrations/002_room_clipboard_version.sql
-   ```
+   **Verify:** In SQL Editor run `SELECT * FROM public.room_clipboard;` — expect 0 rows (not an error). The init script ends with `NOTIFY pgrst, 'reload schema'`; if REST still 404s, wait a few seconds or re-run that notify.
 
-   Migration 001 creates the `room_clipboard` table, RLS policies, and the `clipboard-images` storage bucket + policies. Migration 002 adds the monotonic `version` column and unified `BEFORE INSERT OR UPDATE` trigger (run this even if 001 already included a version column — it consolidates triggers and backfills existing rows).
+   If migrations were not applied, the app shows: *"Database not initialized — run supabase/init.sql in Supabase Dashboard → SQL Editor"*.
 
 4. **Storage bucket** — After running 001, confirm under Storage that bucket `clipboard-images` exists and is public. The migration creates it if missing.
 

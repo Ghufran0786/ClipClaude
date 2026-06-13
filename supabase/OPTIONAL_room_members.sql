@@ -1,0 +1,57 @@
+-- OPTIONAL — NOT APPLIED BY DEFAULT
+-- Scopes room_clipboard access to users who have joined a room via room_members.
+-- Requires app changes: insert into room_members on create/join before read/write.
+-- Review before running; this changes the trust model from "room id = secret" to membership.
+
+-- CREATE TABLE IF NOT EXISTS public.room_members (
+--   room_id text NOT NULL REFERENCES public.room_clipboard(room_id) ON DELETE CASCADE,
+--   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+--   joined_at timestamptz NOT NULL DEFAULT now(),
+--   PRIMARY KEY (room_id, user_id)
+-- );
+--
+-- ALTER TABLE public.room_members ENABLE ROW LEVEL SECURITY;
+--
+-- CREATE POLICY "Users can read own memberships"
+--   ON public.room_members FOR SELECT TO authenticated
+--   USING (user_id = auth.uid());
+--
+-- CREATE POLICY "Users can join rooms"
+--   ON public.room_members FOR INSERT TO authenticated
+--   WITH CHECK (user_id = auth.uid());
+--
+-- DROP POLICY IF EXISTS "Authenticated users can read room content" ON public.room_clipboard;
+-- CREATE POLICY "Members can read room content"
+--   ON public.room_clipboard FOR SELECT TO authenticated
+--   USING (
+--     EXISTS (
+--       SELECT 1 FROM public.room_members m
+--       WHERE m.room_id = room_clipboard.room_id AND m.user_id = auth.uid()
+--     )
+--   );
+--
+-- DROP POLICY IF EXISTS "Authenticated users can insert room content" ON public.room_clipboard;
+-- CREATE POLICY "Members can insert room content"
+--   ON public.room_clipboard FOR INSERT TO authenticated
+--   WITH CHECK (
+--     EXISTS (
+--       SELECT 1 FROM public.room_members m
+--       WHERE m.room_id = room_clipboard.room_id AND m.user_id = auth.uid()
+--     )
+--   );
+--
+-- DROP POLICY IF EXISTS "Authenticated users can update room content" ON public.room_clipboard;
+-- CREATE POLICY "Members can update room content"
+--   ON public.room_clipboard FOR UPDATE TO authenticated
+--   USING (
+--     EXISTS (
+--       SELECT 1 FROM public.room_members m
+--       WHERE m.room_id = room_clipboard.room_id AND m.user_id = auth.uid()
+--     )
+--   )
+--   WITH CHECK (
+--     EXISTS (
+--       SELECT 1 FROM public.room_members m
+--       WHERE m.room_id = room_clipboard.room_id AND m.user_id = auth.uid()
+--     )
+--   );
