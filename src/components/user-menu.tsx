@@ -1,23 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { getSupabase } from "@/lib/supabase";
 import { LogOut, User } from "lucide-react";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export function UserMenu() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const router = useRouter();
-  const supabaseRef = useRef<SupabaseClient | null>(null);
-
-  function getSupabase() {
-    if (!supabaseRef.current) {
-      supabaseRef.current = createClient();
-    }
-    return supabaseRef.current;
-  }
 
   useEffect(() => {
     getSupabase().auth.getUser().then(({ data: { user } }) => {

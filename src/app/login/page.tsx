@@ -2,10 +2,9 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { getSupabase } from "@/lib/supabase";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Clipboard, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -21,15 +20,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
-  const supabaseRef = useRef<SupabaseClient | null>(null);
   const lastSubmitRef = useRef<number>(0);
-
-  function getSupabase() {
-    if (!supabaseRef.current) {
-      supabaseRef.current = createClient();
-    }
-    return supabaseRef.current;
-  }
 
   function validateInputs(): string | null {
     const trimmedEmail = email.trim();

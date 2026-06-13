@@ -1,6 +1,28 @@
 import type { NextConfig } from "next";
 
+/**
+ * Permissive CSP that protects Realtime worker spawn (blob:) while keeping the app functional.
+ * worker-src is explicit so a future CDN/proxy CSP merge cannot silently break idle reconnect.
+ */
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "object-src 'none'",
+  "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  "worker-src 'self' blob: https://*.supabase.co",
+  "frame-ancestors 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
 const securityHeaders = [
+  {
+    key: "Content-Security-Policy",
+    value: contentSecurityPolicy,
+  },
   {
     key: "X-DNS-Prefetch-Control",
     value: "on",
